@@ -1,99 +1,75 @@
 import pandas as pd
 import numpy as np
 import sys
+import multiprocessing 
 import sklearn
 from sklearn.preprocessing import LabelEncoder,OneHotEncoder
-
-df = pd.read_csv("friday_botnet.csv",low_memory=False)
-df = df.loc[:, ~df.columns.str.replace("(\.\d+)$", "").duplicated()]
-#df_test = pd.read_csv("friday_botnet.csv", header=None, names = col_names)
-
-categorical_columns = list()
-for col_name in df.columns:
-    if df[col_name].dtypes == 'object' and col_name != " Label":
-        for i in range(0,len(df[col_name].values)):
-            try:
-                df[col_name].values[i] = float(df[col_name].values[i])
-            except:
-                #print(type(df[col_name].values[i]))
-                categorical_columns.append(col_name)
-                break
-        #print("Feature '{col_name}' has {unique_cat} categories".format(col_name=col_name, unique_cat=unique_cat))
-
-
- # Get the categorical values into a 2D numpy array
-if len(categorical_columns) > 0:
-    df_categorical_values = df[categorical_columns]
-
-    unique_protocol=sorted(df[' Label'].unique())
-
-    string1 = 'Label_'
-    unique_protocol2=[string1 + x for x in unique_protocol]
-
-
-    df_categorical_values_enc=df_categorical_values.apply(LabelEncoder().fit_transform)
-
-    enc = OneHotEncoder(categories="auto")
-    print("---------")
-    df_categorical_values_encenc = enc.fit_transform(df_categorical_values_enc)
-    print("+++++++++")
-    df_cat_data = pd.DataFrame(df_categorical_values_encenc.toarray(),columns=unique_protocol2)
-
-    print(df_cat_data.head())
-
-    newdf=df.join(df_cat_data)
-    for col_name in categorical_columns:
-        newdf.drop(col_name, axis=1, inplace=True)
-
-    print(newdf.shape)
-# labeldf = df[" Label"]
-# newlabeldf=labeldf.replace({"BENIGN":2,"Bot":3})
-# df[" Label"] = newlabeldf
-# print(df[" Label"].head())
-# Bot_df=df[df[' Label'].isin([2,3])]
-# print('Dimensions of Bot_df:' ,Bot_df.shape)
-
-X_Bot = df.drop(' Label',1)
-Y_Bot = df[" Label"]
-colNames=list(X_Bot)
-
-def clean_dataset(df,ydf):
-    assert isinstance(df, pd.DataFrame), "df needs to be a pd.DataFrame"
-    df.dropna(inplace=True,axis=1, how='all')
-    indices_to_keep = ~df.isin([np.nan, np.inf, -np.inf]).any(1)
-    return df[indices_to_keep].astype(np.float64), ydf[indices_to_keep]
-
-
-X_Bot, Y_Bot = clean_dataset(X_Bot, Y_Bot)
+from sklearn import preprocessing
+from sklearn.feature_selection import SelectPercentile, f_classif
 from sklearn.ensemble import ExtraTreesClassifier
-model = ExtraTreesClassifier(n_estimators=10)
-model.fit(X_Bot, Y_Bot)
-print(model.feature_importances_)
 
-print(np.sum(model.feature_importances_))
+import dataset_operations as dbo
 
+colNames = list()
 
 
-# from sklearn import preprocessing
-# print("++",X_Bot.shape)
+def fs_percentile(X_train, Y_train):
+    global colNames
+    scaler1 = preprocessing.StandardScaler().fit(X_train)
+    X_train=scaler1.transform(X_train) 
+    np.seterr(divide='ignore', invalid='ignore');
+    selector=SelectPercentile(f_classif, percentile=10)
+    selector.fit_transform(X_train,Y_train)
+    true=selector.get_support()
+    newcolindex=[i for i, x in enumerate(true) if x]
+    newcolname=list(colNames[i] for i in newcolindex)
+    #print(newcolname)
+    return newcolname
 
-# #Y_Bot = clean_dataset(Y_Bot)
-# scaler1 = preprocessing.StandardScaler().fit(X_Bot)
-# X_Bot=scaler1.transform(X_Bot) 
+def fs_extra_trees_classifier(X_train, Y_train, importance_count):
+    model = ExtraTreesClassifier(n_estimators=10)
+    model.fit(X_train, Y_train)
+    sorted_l = np.sort(model.feature_importances_)
+    reversed_arr = sorted_l[::-1]
+    ind = []
+    for sort in reversed_arr[:importance_count]:
+        result = np.where(model.feature_importances_ == sort)
+        ind.append(result[0][0])
+    return [X_train.columns[i] for i in ind]
+    #return np.sum(model.feature_importances_)
 
-# print(X_Bot.shape, "--",Y_Bot.shape)
-# print(Y_Bot)
-# from sklearn.feature_selection import SelectPercentile, f_classif
-# np.seterr(divide='ignore', invalid='ignore');
-# selector=SelectPercentile(f_classif)
-# print("----")
-# print(selector)
-# X_newDoS = selector.fit_transform(X_Bot,Y_Bot)
-# print(X_newDoS)
+def feature_selection(index, dataset):
+    global colNames
+    df = dbo.get_dataframe(index)
+    df = dbo.dataset_normalizer(df)
+    train_df, test_df = dbo.dataset_split_and_label_replace(df)
+# train_df =  dbo.label_replace(train_df)
+# test_df = dbo.label_replace(test_df)
+#df = dbo.concat_dataframes()
+    # print(train_df[" Label"].head())
+    # print("//////////////")
+    # print(test_df[" Label"].head())
 
-# true=selector.get_support()
-# print("true:",true)
-# newcolindex_DoS=[i for i, x in enumerate(true) if x]
-# print("a:",newcolindex_DoS)
-# newcolname_DoS=list( colNames[i] for i in newcolindex_DoS )
-# print(newcolname_DoS)
+    X_train = train_df.drop(' Label',1)
+    Y_train = train_df[" Label"]
+    X_test = test_df.drop(' Label',1)
+    Y_test = test_df[" Label"]
+    colNames=list(X_train)
+
+    X_train, Y_train = dbo.clean_dataset(X_train, Y_train)
+    X_test, Y_test = dbo.clean_dataset(X_test, Y_test)
+
+    percentile_features = fs_percentile(X_train,Y_train)
+    print(dataset)
+    print(percentile_features)
+    extra_trees_classifier_features = fs_extra_trees_classifier(X_train, Y_train,len(percentile_features))
+    print(extra_trees_classifier_features)
+
+    print("------------")
+
+#gridsearchcv kullan, false positive table ı kullan, r-1?
+
+
+for i, dataset in enumerate(dbo.find_all_datasets()):
+    process = multiprocessing.Process(target=feature_selection, args=(i,dataset, ))
+    process.start()
