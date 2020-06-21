@@ -43,7 +43,7 @@ def fs_percentile(X_train, Y_train, X_test):
     true=selector.get_support()
     newcolindex=[i for i, x in enumerate(true) if x]
     newcolname=list(colNames[i] for i in newcolindex)
-    #print(newcolname)
+    #print("newcolindex -> ",newcolindex )
     return X_new,X_test,newcolname, newcolindex
 
 def fs_extra_trees_classifier(X_train, Y_train, importance_count):
@@ -95,9 +95,17 @@ def feature_selection(index, dataset):
 
     X_train, Y_train = dbo.clean_dataset(X_train, Y_train)
     X_test, Y_test = dbo.clean_dataset(X_test, Y_test)
+
+    #print(type(Y_train))
+    #print(type(Y_test))
+    #print((X_test.shape))
+    #print((Y_test.shape))
+
+
     print("2")
     X_new, X_test, percentile_features, newcolindex = fs_percentile(X_train,Y_train.values.ravel(),X_test)
     X_test2=X_test[:,newcolindex]
+
     print("3")
     #fs_rfe(X_new,Y_train,percentile_features) #another feature selection method
     #extra_trees_classifier_features = fs_extra_trees_classifier(X_train, Y_train,len(percentile_features))
@@ -112,6 +120,9 @@ def feature_selection(index, dataset):
     # clf_rfeDoS=DecisionTreeClassifier(random_state=0)
     # clf_rfeDoS.fit(X_new, Y_train)
     # Y_pred = clf_rfeDoS.predict(X_test2)
+    # print(confusion_matrix(Y_test, Y_pred))
+    # print("Acc: ", metrics.accuracy_score(Y_test,Y_pred))
+
     # accuracy = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='accuracy')
     # print("Accuracy: %0.5f (+/- %0.5f)" % (accuracy.mean(), accuracy.std() * 2))
     # precision = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='precision_micro')
@@ -120,19 +131,23 @@ def feature_selection(index, dataset):
     # print("Recall: %0.5f (+/- %0.5f)" % (recall.mean(), recall.std() * 2))
     # f = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='f1_micro')
     # print("F-measure: %0.5f (+/- %0.5f)" % (f.mean(), f.std() * 2))
+    # print(confusion_matrix(Y_test, Y_pred))
+
     ####################################
-    classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=1),n_estimators=200)
+    classifier = AdaBoostClassifier(n_estimators=500,learning_rate=1)
     classifier.fit(X_new, Y_train)
     Y_pred = classifier.predict(X_test2)
-    accuracy = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='accuracy')
-    print("Accuracy: %0.5f (+/- %0.5f)" % (accuracy.mean(), accuracy.std() * 2))
-    precision = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='precision_micro')
-    print("Precision: %0.5f (+/- %0.5f)" % (precision.mean(), precision.std() * 2))
-    recall = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='recall_micro')
-    print("Recall: %0.5f (+/- %0.5f)" % (recall.mean(), recall.std() * 2))
-    f = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='f1_micro')
-    print("F-measure: %0.5f (+/- %0.5f)" % (f.mean(), f.std() * 2))
     print(confusion_matrix(Y_test, Y_pred))
+    print("Acc: ", metrics.accuracy_score(Y_test,Y_pred))
+    # accuracy = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='accuracy')
+    # print("Accuracy: %0.5f (+/- %0.5f)" % (accuracy.mean(), accuracy.std() * 2))
+    # precision = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='precision_micro')
+    # print("Precision: %0.5f (+/- %0.5f)" % (precision.mean(), precision.std() * 2))
+    # recall = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='recall_micro')
+    # print("Recall: %0.5f (+/- %0.5f)" % (recall.mean(), recall.std() * 2))
+    # f = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='f1_micro')
+    # print("F-measure: %0.5f (+/- %0.5f)" % (f.mean(), f.std() * 2))
+    # print(confusion_matrix(Y_test, Y_pred))
     ####################################
 
     print("4")
@@ -142,8 +157,7 @@ def feature_selection(index, dataset):
     
 
 #gridsearchcv kullan, false positive table ı kullan, r-1?
-
-a=2
+a=7
 for i, dataset in enumerate(dbo.find_all_datasets()):
     print(dbo.find_all_datasets()[a])
     process = multiprocessing.Process(target=feature_selection, args=(a,dbo.find_all_datasets()[a], ))
