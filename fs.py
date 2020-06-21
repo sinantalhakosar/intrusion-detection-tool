@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import sys
 import time
-#from blessings import Terminal
+from blessings import Terminal
 import multiprocessing 
 import sklearn
 from sklearn.preprocessing import LabelEncoder,OneHotEncoder
@@ -14,11 +14,14 @@ from sklearn.feature_selection import RFE
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import cross_val_score
 from sklearn import metrics
-
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.metrics import confusion_matrix
+import random
+random.seed(1234)
 import dataset_operations as dbo
 
 colNames = list()
-#term = Terminal()
+term = Terminal()
 
 def fs_rfe(X_train, Y_train, colnames):
     clf = DecisionTreeClassifier(random_state=0)
@@ -57,19 +60,19 @@ def fs_extra_trees_classifier(X_train, Y_train, importance_count):
 
 def feature_selection(index, dataset):
     global colNames
-    df = dbo.concat_dataframes()
-    # with term.location(y=index+1):
+    df = dbo.get_dataframe(index)
+    # with term.location(y=index*2+1):
     #     sys.stdout.write("\033[K")
     print("loading dataset:",index, "-> 100%")
     time.sleep(1)
     df = dbo.dataset_normalizer(df,index)
-    # with term.location(y=index+1):
-    #     sys.stdout.write("\033[K")
+    #with term.location(y=index*2+1):
+        #sys.stdout.write("\033[K")
     print("normalizing dataset:",index,"-> 100%")
     time.sleep(1)
     train_df, test_df = dbo.dataset_split_and_label_replace(df,index)
-    # with term.location(y=index+1):
-    #     sys.stdout.write("\033[K")
+    #with term.location(y=index*2+1):
+    #    sys.stdout.write("\033[K")
     print("splitting dataset:",index,"-> 100%")
     time.sleep(1)
 # train_df =  dbo.label_replace(train_df)
@@ -79,48 +82,71 @@ def feature_selection(index, dataset):
     # print("//////////////")
     # print(test_df[" Label"].head())
 
-    # with term.location(y=index+1):
-    #     sys.stdout.write("\033[K")
+    #with term.location(y=index*2+1):
+    #    sys.stdout.write("\033[K")
     print("feature selecting for dataset:",index,"-> 0%")
     
     X_train = train_df.drop(' Label',1)
     Y_train = train_df.loc[:,[" Label"]]
     X_test = test_df.drop(' Label',1)
     Y_test = test_df.loc[:,[" Label"]]
-
+    print("1")
     colNames=list(X_train)
 
     X_train, Y_train = dbo.clean_dataset(X_train, Y_train)
     X_test, Y_test = dbo.clean_dataset(X_test, Y_test)
-
+    print("2")
     X_new, X_test, percentile_features, newcolindex = fs_percentile(X_train,Y_train.values.ravel(),X_test)
     X_test2=X_test[:,newcolindex]
+    print("3")
     #fs_rfe(X_new,Y_train,percentile_features) #another feature selection method
     #extra_trees_classifier_features = fs_extra_trees_classifier(X_train, Y_train,len(percentile_features))
     # with term.location(y=index+1):
     #     sys.stdout.write("\033[K")
-    print("selected features for dataset:",index, "-> ",percentile_features)
+    #print("selected features for dataset:",index, "-> ",percentile_features)
     #print(percentile_features)
     #print(extra_trees_classifier_features)
     #print("------------")
 
-    clf_rfeDoS=DecisionTreeClassifier(random_state=0)
-    clf_rfeDoS.fit(X_new, Y_train)
-    Y_pred = clf_rfeDoS.predict(X_test2)
-
-    accuracy = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='accuracy',average='micro')
+    ####################################
+    # clf_rfeDoS=DecisionTreeClassifier(random_state=0)
+    # clf_rfeDoS.fit(X_new, Y_train)
+    # Y_pred = clf_rfeDoS.predict(X_test2)
+    # accuracy = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='accuracy')
+    # print("Accuracy: %0.5f (+/- %0.5f)" % (accuracy.mean(), accuracy.std() * 2))
+    # precision = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='precision_micro')
+    # print("Precision: %0.5f (+/- %0.5f)" % (precision.mean(), precision.std() * 2))
+    # recall = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='recall_micro')
+    # print("Recall: %0.5f (+/- %0.5f)" % (recall.mean(), recall.std() * 2))
+    # f = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='f1_micro')
+    # print("F-measure: %0.5f (+/- %0.5f)" % (f.mean(), f.std() * 2))
+    ####################################
+    classifier = AdaBoostClassifier(DecisionTreeClassifier(max_depth=1),n_estimators=200)
+    classifier.fit(X_new, Y_train)
+    Y_pred = classifier.predict(X_test2)
+    accuracy = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='accuracy')
     print("Accuracy: %0.5f (+/- %0.5f)" % (accuracy.mean(), accuracy.std() * 2))
-    precision = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='precision',average='micro')
+    precision = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='precision_micro')
     print("Precision: %0.5f (+/- %0.5f)" % (precision.mean(), precision.std() * 2))
-    recall = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='recall',average='micro')
+    recall = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='recall_micro')
     print("Recall: %0.5f (+/- %0.5f)" % (recall.mean(), recall.std() * 2))
-    f = cross_val_score(clf_rfeDoS, X_test2, Y_test, cv=10, scoring='f1',average='micro')
+    f = cross_val_score(classifier, X_test2, Y_test, cv=10, scoring='f1_micro')
     print("F-measure: %0.5f (+/- %0.5f)" % (f.mean(), f.std() * 2))
+    print(confusion_matrix(Y_test, Y_pred))
+    ####################################
+
+    print("4")
+    
+    #with term.location(y=index*2+2):
+    
+    
 
 #gridsearchcv kullan, false positive table ı kullan, r-1?
 
-
+a=2
 for i, dataset in enumerate(dbo.find_all_datasets()):
-    process = multiprocessing.Process(target=feature_selection, args=(i,dataset, ))
+    print(dbo.find_all_datasets()[a])
+    process = multiprocessing.Process(target=feature_selection, args=(a,dbo.find_all_datasets()[a], ))
     process.start()
+    process.join()
     break
