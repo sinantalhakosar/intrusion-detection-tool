@@ -1,5 +1,4 @@
 from os import listdir
-from blessings import Terminal
 import sys
 import pandas as pd
 import numpy as np
@@ -10,7 +9,6 @@ random.seed(1234)
 
 
 path_to_dir = "../"
-term = Terminal()
 
 def dataset_count():
     return len(find_all_datasets(path_to_dir))
@@ -22,9 +20,6 @@ def find_all_datasets(path_to_dir=path_to_dir, suffix=".csv"):
 csvpaths = find_all_datasets(path_to_dir)
 
 def get_dataframe(dataset_number=0):
-    #print(csvpaths[dataset_number])
-    #with term.location(y=dataset_number*2+1):
-    print("loading dataset:",dataset_number, "-> 0%")
     df = pd.read_csv(path_to_dir+csvpaths[dataset_number],low_memory=False)
     df = df.loc[:, ~df.columns.str.replace("(\.\d+)$", "").duplicated()]
     return df
@@ -41,9 +36,6 @@ def concat_dataframes(csvpaths=csvpaths):
 def dataset_normalizer(df, index):
     categorical_columns = list()
     label_list = list()
-    #with term.location(y=index*2+1):
-        #sys.stdout.write("\033[K")
-    print("normalizing dataset:",index,"-> 0%")
     for col_name in df.columns:
         if df[col_name].dtypes == 'object' and col_name != " Label":
                 for i in range(0,len(df[col_name].values)):
@@ -84,9 +76,6 @@ def label_replace(df):
     return df
 
 def dataset_split_and_label_replace(df,index):
-    #with term.location(y=index*2+1):
-        #sys.stdout.write("\033[K")
-    print("splitting dataset:",index,"-> 0%")
     train_df, test_df = train_test_split(df, test_size=0.2)
     train_df = label_replace(train_df)
     test_df = label_replace(test_df)
