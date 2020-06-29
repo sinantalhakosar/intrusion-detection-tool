@@ -56,8 +56,8 @@ def fs_percentile(X_train, Y_train, X_test):
 
 def feature_selection(index, dataset):
     global colNames
-    df = dbo.get_dataframe(index)
-    #df = dbo.concat_dataframes()
+    df = dbo.get_dataframe(index) # for individual dataset
+    #df = dbo.concat_dataframes() # for concatting datasets
     df = dbo.label_replace(df)
     df = df.astype('float64')
     train_df, test_df = dbo.dataset_split_and_label_replace(df,index)
@@ -138,12 +138,15 @@ def runner(index, dataset):
         return
     print(dataset)
     X_train, Y_train, X_test, Y_test = feature_selection(index,dataset)
-    #adaBoostModel(X_train,Y_train,X_test,Y_test,index)
     #decisionTreeModel(X_train,Y_train,X_test,Y_test,index)
-    #randomForestModel(X_train,Y_train,X_test,Y_test,index)
-    lstm(X_train,Y_train,X_test,Y_test,index)
+    #adaBoostModel(X_train,Y_train,X_test,Y_test,index)
+    randomForestModel(X_train,Y_train,X_test,Y_test,index)
+    #naiveBayesNetwork(X_train,Y_train,X_test,Y_test,index)
+    #multiLayerPerceptron(X_train,Y_train,X_test,Y_test,index)
 
-# no multiprocessing, !!for drawing table!!, otherwise no shared memory, overrides
+"""
+no multiprocessing, !!for drawing table!!, otherwise no shared memory, overrides
+"""
 # for a in range(8):
 #     if( a == 3 ): # All benign, no feature selection, Monday-WorkingHours
 #         continue
@@ -151,14 +154,24 @@ def runner(index, dataset):
 #     feature_selection(a,dbo.find_all_datasets()[a])
 
 # plot_table.draw(row_labels,table_vals)
-    
-a=5
+
+"""
+Please change a for dataset number between 0 and 7
+""" 
+a=0
+runner(a,dbo.find_all_datasets()[a])
+"""
+For concurent operations
+"""
 # for i, dataset in enumerate(dbo.find_all_datasets()):
 #     print(dbo.find_all_datasets()[a])
-#     process = multiprocessing.Process(target=runner, args=(a,dbo.find_all_datasets()[a], ))
-#     process.start()
-#     process.join()
-#     break
+#     try:
+#         process = multiprocessing.Process(target=runner, args=(a,dbo.find_all_datasets()[a], ))
+#         process.start()
+#         process.join()
+#     except:
+#         pass
+    
 
-runner(a,dbo.find_all_datasets()[a])
+
     
