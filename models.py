@@ -91,10 +91,9 @@ def randomForestModel(X_train,Y_train,X_test,Y_test,index):
     clf.fit(X_train,Y_train.values.ravel())
     Y_pred=clf.predict(X_test)
     scorer(Y_test, Y_pred,'RandomForestClassifier',index)
-    plotter(clf,X_test,Y_test)
+    #plotter(clf,X_test,Y_test)
 
-def lstm(X_train,Y_train,X_test,Y_test,index):
-    
+def multiLayerPerceptron(X_train,Y_train,X_test,Y_test,index):
     #Create a Multi-Layer Perceptron
     clf = MLPClassifier(solver='lbfgs', alpha=1e-5,
     hidden_layer_sizes=(5, 2), random_state=1)
@@ -102,11 +101,12 @@ def lstm(X_train,Y_train,X_test,Y_test,index):
     Y_pred=clf.predict(X_test);
     scorer(Y_test, Y_pred,'MLP',index)
 
+def naiveBayesNetwork(X_train,Y_train,X_test,Y_test,index):
     #Create a Gaussian Naive Bayes Classifier
-    # gnb = GaussianNB()
-    # gnb.fit(X_train,Y_train)
-    # Y_pred=gnb.predict(X_test)
-    # scorer(Y_test, Y_pred,'NB',index)
+    gnb = GaussianNB()
+    gnb.fit(X_train,Y_train)
+    Y_pred=gnb.predict(X_test)
+    scorer(Y_test, Y_pred,'NB',index)
 
 def scorer(Y_test, Y_pred,modelname,index):
     print("####### ",modelname, " #######")
